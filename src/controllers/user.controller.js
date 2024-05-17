@@ -12,7 +12,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
 
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ email }, { username }]
     })
     console.log("🚀 ~ registerUser ~ existedUser:", existedUser)
@@ -22,19 +22,29 @@ const registerUser = asyncHandler(async (req, res) => {
     }
     console.log("req.files : ", req.files);
 
+    
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    let coverImageLocalPath;
 
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0 ){
+        console.log("Yes");
+        coverImageLocalPath = req.files?.coverImage[0]?.path;
+    }
+    
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar is Required")
     }
+    
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
     if (!avatar) {
-        throw new ApiError(400, "Avatar is Required")
+        throw new ApiError(400, "Avatar is Required Cloudinary")
     }
-
+    
+    
+    console.log("🚀 ~ registerUser ~ avatar:", avatar)
+    
     const user = await User.create({
         fullname,
         avatar: avatar.url,
@@ -45,7 +55,7 @@ const registerUser = asyncHandler(async (req, res) => {
     })
 
     const createdUser = await User.findById(user?._id).select(
-        "-password -refreshToken"
+        "-password -refreshToken"   
     )
 
     if (!createdUser) {
@@ -54,5 +64,13 @@ const registerUser = asyncHandler(async (req, res) => {
 
     return res.status(201).json(new ApiResponse(201, createdUser, "User registered successfully"))
 });
+
+
+
+
+// const loginUser = asyncHandler(async (res,req)=> {
+//     const {username , password} = req.body
+
+// })
 
 export { registerUser }
