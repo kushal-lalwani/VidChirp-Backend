@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken"
 
@@ -206,29 +206,33 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     }, { new: true }).select("-password")
     // new true for getting details after update
 
-    return res.status(200).json(new ApiResponse(200,user,"Account details updated"))
+    return res.status(200).json(new ApiResponse(200, user, "Account details updated"))
 })
 
-const updateAvatar = asyncHandler(async (req,res) => {  
+const updateAvatar = asyncHandler(async (req, res) => {
     const avatarLocalPath = req.file?.path
 
-    if(!avatarLocalPath){
-        throw new ApiError(400,"Path missing")
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Path missing")
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-    if(!avatar.url){
-        throw new ApiError(500,"Error while uploading")
+    if (!avatar.url) {
+        throw new ApiError(500, "Error while uploading")
     }
 
-    const user = await User.findByIdAndUpdate(req.user._id,{
-        $set:{
-        avatar : avatar.url
-        }
-    },{new:true}).select("-password")
+    const user = await User.findById(req.user._id)
 
-    return res.status(200).json(new ApiResponse(200,user,"Avatar Updated Succesfully"))
+    const response = await deleteFromCloudinary(user.avatar)
+    if (!response.success) {
+        throw new ApiError(500, "Failed to delete the resource")
+    }
+
+    user.avatar = avatar.url;
+    user = await user.save({ validateBeforeSave: false })
+
+    return res.status(200).json(new ApiResponse(200, user, "Avatar Updated Succesfully"))
 
 })
 
@@ -247,15 +251,19 @@ const updateCoverImage = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Error while uploading")
     }
 
-    const user = await User.findByIdAndUpdate(req.user._id, {
-        $set: {
-            coverImage: coverImage.url
-        }
-    }, { new: true }).select("-password")
+    const user = await User.findById(req.user._id)
+
+    const response = await deleteFromCloudinary(user.coverImage)
+    if (!response.success) {
+        throw new ApiError(500, "Failed to delete the resource")
+    }
+
+    user.coverImage = coverImage.url;
+    user = await user.save({ validateBeforeSave: false })
 
     return res.status(200).json(new ApiResponse(200, user, "Cover Image Updated Succesfully"))
 
 })
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getUser, updateAccountDetails, updateAvatar, updateCoverImage }
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getUser, updateAccountDetails, updateAvatar, updateCoverImage, getUserChannel }
