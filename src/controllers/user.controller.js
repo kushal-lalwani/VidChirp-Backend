@@ -267,6 +267,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 
 
 const getUserChannel = asyncHandler(async (req, res) => {
+
     const { username } = req.params
 
     if (!username?.trim()) {
@@ -309,14 +310,14 @@ const getUserChannel = asyncHandler(async (req, res) => {
                 isSubscribed: {
                     $cond: {
                         if: { $in: [req.user?._id, "$subscribers.subscriber"] },
-                        then: true ,
+                        then: true,
                         else: false
                     }
                 }
             }
         },
         {
-            $project:{
+            $project: {
                 fullName: 1,
                 username: 1,
                 subscribersCount: 1,
@@ -330,11 +331,60 @@ const getUserChannel = asyncHandler(async (req, res) => {
     ])
     console.log(channel)
 
-    if(!channel?.length){
-        throw new ApiError(404,"Channel does not exist")
+    if (!channel?.length) {
+        throw new ApiError(404, "Channel does not exist")
     }
 
-    return res.status(200).json(new ApiResponse(200,channel[0],"User Channel Fetched"))
+    return res.status(200).json(new ApiResponse(200, channel[0], "User Channel Fetched"))
 })
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getUser, updateAccountDetails, updateAvatar, updateCoverImage, getUserChannel }
+const getWatchHistory = asyncHandler(async (req, res) => {
+
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id)
+                // as req.user._id returns string of that id while it is stored as an ObjectId
+            }
+        },
+        {
+            $lookup:{
+                from:"videos",
+                localField:"watchHistory",
+                foreignField:"_id",
+                as:"watchHistory",
+                pipeline:[
+                    {
+                        $lookup:{
+                            from:"users",
+                            localField:"owner",
+                            foreignField:"_id",
+                            as:"owner",
+                            pipeline:[
+                                {
+                                    $project:{
+                                        fullName:1,
+                                        username:1,
+                                        avatar:1
+                                    }
+                                },
+                                //now $first for structuring the data,else the owner field will have array and the first object will have the data.(frontend likhe tab dekhna )
+                                {
+                                    $addFields:{
+                                        owner:{
+                                            $first:"$owner"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res.status(200).json(new ApiResponse(200,user[0].watchHistory,"watch history fetched"))
+})
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getUser, updateAccountDetails, updateAvatar, updateCoverImage, getUserChannel, getWatchHistory }
