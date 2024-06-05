@@ -108,6 +108,10 @@ const updateTweet = asyncHandler(async (req, res) => {
     const { tweetId } = req.params
     const { content } = req.body
 
+    if (!isValidObjectId(tweetId)) {
+        throw new ApiError(400, "Invalid tweetId");
+    }
+
     if (!content) {
         throw new ApiError(400, 'Content required')
     }
@@ -141,6 +145,10 @@ const updateTweet = asyncHandler(async (req, res) => {
 
 const deleteTweet = asyncHandler(async (req, res) => {
     const { tweetId } = req.params
+
+    if(!isValidObjectId(tweetId)){
+        throw new ApiError(400, "Invalid tweetId");
+    }
 
     const tweet = await Tweet.findById(tweetId)
     if (!tweet) {
