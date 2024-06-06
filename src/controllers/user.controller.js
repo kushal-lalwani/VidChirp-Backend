@@ -4,6 +4,7 @@ import { ApiError } from "../utils/apiError.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken"
+import mongoose from "mongoose";
 
 const cookieOptions = {
     httpOnly: true,
@@ -42,7 +43,7 @@ const registerUser = asyncHandler(async (req, res) => {
     console.log("🚀 ~ registerUser ~ existedUser:", existedUser)
 
     if (existedUser) {
-        throw new ApiError(409, "User already exists")
+        throw new ApiError(400, "User already exists")
     }
     console.log("req.files : ", req.files);
 
@@ -345,6 +346,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
             $match: {
                 _id: new mongoose.Types.ObjectId(req.user._id)
                 // as req.user._id returns string of that id while it is stored as an ObjectId
+                //  depreacted, can use mongoose.Types.ObjectId.createFromHexString() 
             }
         },
         {
