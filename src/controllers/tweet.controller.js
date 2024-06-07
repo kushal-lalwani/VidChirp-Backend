@@ -159,7 +159,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
         throw new ApiError(403, "You are not authorized to delete this tweet")
     }
 
-    await Comment.findByIdAndDelete(commentId)
+    await Tweet.findByIdAndDelete(tweetIdId)
 
     // also likes have to be removed from database
     await Like.deleteMany({
