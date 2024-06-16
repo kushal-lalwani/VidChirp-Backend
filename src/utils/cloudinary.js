@@ -28,9 +28,9 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
-const deleteFromCloudinary = async (id) => {
+const deleteFromCloudinary = async (id, resource_type="image") => {
     try {
-        return cloudinary.uploader.destroy(id)
+        return cloudinary.uploader.destroy(id, {resource_type: `${resource_type}`})
             .then((result) => {
                 return new ApiResponse(200, result, "Deleted Successfully");
             })

@@ -4,7 +4,9 @@ import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/apiError.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js"
+import { Like } from "../models/like.model.js"
+import { Comment } from "../models/comment.model.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -33,7 +35,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 index: "default",
                 text: {
                     query: query,
-                    path: ["title", "description"] //search only on title, desc
+                    path: ["title", "description"] //search only on title, desc 
                 }
             }
         });
@@ -218,8 +220,8 @@ const getVideoById = asyncHandler(async (req, res) => {
                 title: 1,
                 description: 1,
                 duration: 1,
-                "videoFile.url": 1,
-                "thumbnail.url": 1,
+                videoFile: 1,
+                thumbnail: 1,
                 "owner.fullName": 1,
                 "owner.username": 1,
                 "owner.avatar": 1,
@@ -291,13 +293,13 @@ const updateVideo = asyncHandler(async (req, res) => {
         updatedFields.description = description;
     }
 
-    if(!(title&&description&&thumbnailPath)){
+    if((title&&description&&thumbnailPath)){
         throw new ApiError(400, 'Nothing to update')
     }
 
     const updatedVideo = await Video.findByIdAndUpdate(videoId, updatedFields, { new: true })
     
-    return new res.status(200).json(new ApiResponse(200,updateVideo,"Video updated successfully"))
+    return res.status(200).json(new ApiResponse(200,updateVideo,"Video updated successfully"))
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
@@ -308,7 +310,6 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 
     const video = await Video.findById(videoId)
-
     if (!video) {
         throw new ApiError(404, 'Video not found')
     }
@@ -317,7 +318,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new ApiError(403, 'You are not authorized to delete this video')
     }
 
-    const videoResponse = await deleteFromCloudinary(video.videoFile)
+    const videoResponse = await deleteFromCloudinary(video.videoFile,"video")
     if (!videoResponse.success) {
         throw new ApiError(500, "Failed to delete the video resource")
     }
@@ -330,11 +331,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
     await Video.findByIdAndDelete(videoId)
 
     // also likes and comments have to be removed from database
-    await Like.deleteMany({
+    await Like?.deleteMany({
         video: videoId
     })
 
-    await Comment.deleteMany({
+    await Comment?.deleteMany({
         video: videoId
     })
 
@@ -378,10 +379,10 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
 })
 
 export {
-    getAllVideos,
-    publishAVideo,
-    getVideoById,
-    updateVideo,
-    deleteVideo,
-    togglePublishStatus
+    getAllVideos, //working
+    publishAVideo, //working
+    getVideoById, // working
+    updateVideo, // working
+    deleteVideo, // working
+    togglePublishStatus // working
 }
