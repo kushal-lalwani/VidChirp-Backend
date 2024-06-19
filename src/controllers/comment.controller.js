@@ -11,6 +11,11 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
     const { videoId } = req.params
     const { page = 1, limit = 10 } = req.query
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
 
     const allComments = await Comment.aggregate([
         {
@@ -37,7 +42,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
         {
             $addFields: {
                 likesCount: {
-                    $size: "likes"
+                    $size: "$likes"
                 },
                 isLiked: {
                     $cond: {
@@ -47,8 +52,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
                         //for that liked button 
                     }
                 },
-                $owner: {
-                    $first: "owner"
+                owner: {
+                    $first: "$owner"
                 }
             }
         },
