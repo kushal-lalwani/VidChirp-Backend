@@ -11,13 +11,14 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
     const { videoId } = req.params
     const { page = 1, limit = 10 } = req.query
+    console.log(videoId);
     const video = await Video.findById(videoId);
 
     if (!video) {
         throw new ApiError(404, "Video not found");
     }
 
-    const allComments = await Comment.aggregate([
+    const pipeline = [
         {
             $match: {
                 video: new mongoose.Types.ObjectId(videoId)
@@ -55,6 +56,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
                 owner: {
                     $first: "$owner"
                 }
+
             }
         },
         {
@@ -63,7 +65,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
                 likesCount: 1,
                 isLiked: 1,
                 owner: {
-                    fullName: 1,
+                    fullname: 1,
                     avatar: 1,
                     username: 1
                 },
@@ -71,19 +73,33 @@ const getVideoComments = asyncHandler(async (req, res) => {
             }
         }
 
-    ])
+    ]
 
-const paginateOptions = {
-    page: parseInt(page, 10),
-    limit: parseInt(limit, 10)
-};
+    const allComments = Comment.aggregate(pipeline)  
+    // Not using await returns cursor like this :
+    // Aggregate {
+    //     _pipeline: [
+    //         { '$match': [Object] },
+    //         { '$lookup': [Object] },
+    //         { '$lookup': [Object] },
+    //         { '$addFields': [Object] },
+    //         { '$project': [Object] }
+    //     ],
+    //         _model: Model { Comment },
+    //     options: { }
+    // }
+    // console.log(allComments);
+    const options = {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10)
+    };
 
-const comments = await Comment.aggregatePaginate(
-    allComments,
-    paginateOptions
-);
+    const comments = await Comment.aggregatePaginate(
+        allComments,
+        options
+    );
 
-return res.status(200).json(new ApiResponse(200, comments, "Comments fetched successfully"));
+    return res.status(200).json(new ApiResponse(200, comments, "Comments fetched successfully"));
 
 
 })
@@ -103,7 +119,7 @@ const addComment = asyncHandler(async (req, res) => {
 
     const comment = await Comment.create({
         content: content,
-        owner: req.body._id,
+        owner: req.user._id,
         video: videoId
     })
 
@@ -115,6 +131,7 @@ const addComment = asyncHandler(async (req, res) => {
 })
 
 const updateComment = asyncHandler(async (req, res) => {
+
     const { commentId } = req.params
     const { content } = req.body
 

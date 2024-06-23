@@ -20,7 +20,7 @@ router.route("/login").post(loginUser)
 
 router.route("/logout").post(verifyJWT, logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
-router.route("/user").post(verifyJWT, getUser)
+router.route("/user").get(verifyJWT, getUser)
 router.route("/channel/:username").post(verifyJWT, getUserChannel)
 router.route("/change-password").post(verifyJWT, changePassword)
 router.route("/update-details").patch(verifyJWT, updateAccountDetails)

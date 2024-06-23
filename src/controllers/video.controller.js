@@ -15,7 +15,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
     // created a search index named "default" in mongoDB atlas with field mapppings title and description
     // Field mappings specify which fields within your documents should be indexed for text search.
-    
+
     if (userId) {
         if (!isValidObjectId(userId)) {
             throw new ApiError(400, "Invalid userId");
@@ -64,7 +64,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 pipeline: [
                     {
                         $project: {
-                            fullName:1,
+                            fullname: 1,
                             username: 1,
                             avatar: 1
                         }
@@ -77,7 +77,9 @@ const getAllVideos = asyncHandler(async (req, res) => {
         }
     )
 
-    const videoAggregate = Video.aggregate(pipeline);
+    const videoAggregate = Video.aggregate(pipeline);   
+    // const videoAggregate = await Video.aggregate(pipeline) : This didn't worked because when we use await it executes the pipeline and thus result can't be passed into aggregatePaginate
+    // However not using await returns it returns an aggregation cursor. This cursor can be passed to aggregatePaginate which can then manage the pagination using the cursor.
 
     const options = {
         page: parseInt(page, 10),
@@ -105,7 +107,6 @@ const publishAVideo = asyncHandler(async (req, res) => {
     if (!thumbnailPath) {
         throw new ApiError(400, 'Thumbnail is required')
     }
-
     const videoFile = await uploadOnCloudinary(videoPath)
     const thumbnail = await uploadOnCloudinary(thumbnailPath)
 
@@ -123,7 +124,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
         videoFile: videoFile.url,
         thumbnail: thumbnail.url,
         owner: req.user._id,
-        duration:videoFile.duration,
+        duration: videoFile.duration,
         isPublished: true
     })
 
@@ -180,7 +181,7 @@ const getVideoById = asyncHandler(async (req, res) => {
                     },
                     {
                         $project: {
-                            fullName: 1,
+                            fullname: 1,
                             username: 1,
                             avatar: 1,
                             isSubscribed: 1,
@@ -191,7 +192,7 @@ const getVideoById = asyncHandler(async (req, res) => {
             }
         },
         {
-            $unwind:"$owner"
+            $unwind: "$owner"
         },
         {
             $lookup: {
@@ -222,14 +223,16 @@ const getVideoById = asyncHandler(async (req, res) => {
                 duration: 1,
                 videoFile: 1,
                 thumbnail: 1,
-                "owner.fullName": 1,
                 "owner.username": 1,
                 "owner.avatar": 1,
                 "owner.isSubscribed": 1,
                 "owner.subscriberCount": 1,
+                "owner.fullname": 1,
                 isPublished: 1,
                 isLiked: 1,
-                likesCount: 1
+                likesCount: 1,
+                views: 1,
+                createdAt: 1
             }
         }
     ]);
@@ -239,40 +242,47 @@ const getVideoById = asyncHandler(async (req, res) => {
     }
 
     // adding to watch history if user account exists
-    if(req.user?._id){
+    if (req.user?._id) {
         await User.findByIdAndUpdate(req.user?._id, {
             $addToSet: {
                 watchHistory: videoId
             }
         });
+        await Video.findByIdAndUpdate(videoId, {
+            $inc: {
+                views: 1
+            }
+        });
     }
+    
+    
 
     res.status(200).json(new ApiResponse(200, video[0], "Video fetched successfully"));
-}); 
+});
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    const { title, description} = req.body
+    const { title, description } = req.body
     const thumbnailPath = req.files?.thumbnail[0]?.path
-    let updatedFields= {}
-    
-    if(!isValidObjectId(videoId)){
+    let updatedFields = {}
+
+    if (!isValidObjectId(videoId)) {
         throw new ApiError(400, 'Invalid video Id')
     }
-    
+
     const video = await Video.findById(videoId)
-    
-    if(!video){
+
+    if (!video) {
         throw new ApiError(404, 'Video not found')
     }
-    
-    if(video.owner.toString() !== req.user._id.toString()){
+
+    if (video.owner.toString() !== req.user._id.toString()) {
         throw new ApiError(403, 'You are not authorized to update this video')
     }
 
-    if(thumbnailPath){
+    if (thumbnailPath) {
         const thumbnail = await uploadOnCloudinary(thumbnailPath)
-        if(!thumbnail.url){
+        if (!thumbnail.url) {
             throw new ApiError(500, 'Failed to upload Thumbnail')
         }
 
@@ -284,7 +294,7 @@ const updateVideo = asyncHandler(async (req, res) => {
 
         updatedFields.thumbnail = thumbnail.url
     }
-    
+
     if (title) {
         updatedFields.title = title;
     }
@@ -293,18 +303,18 @@ const updateVideo = asyncHandler(async (req, res) => {
         updatedFields.description = description;
     }
 
-    if((title&&description&&thumbnailPath)){
+    if ((title && description && thumbnailPath)) {
         throw new ApiError(400, 'Nothing to update')
     }
 
     const updatedVideo = await Video.findByIdAndUpdate(videoId, updatedFields, { new: true })
-    
-    return res.status(200).json(new ApiResponse(200,updateVideo,"Video updated successfully"))
+
+    return res.status(200).json(new ApiResponse(200, updateVideo, "Video updated successfully"))
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    
+
     if (!isValidObjectId(videoId)) {
         throw new ApiError(400, 'Invalid video Id')
     }
@@ -318,7 +328,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new ApiError(403, 'You are not authorized to delete this video')
     }
 
-    const videoResponse = await deleteFromCloudinary(video.videoFile,"video")
+    const videoResponse = await deleteFromCloudinary(video.videoFile, "video")
     if (!videoResponse.success) {
         throw new ApiError(500, "Failed to delete the video resource")
     }
@@ -371,7 +381,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         { new: true }
     );
 
-    if(!togglePublish){
+    if (!togglePublish) {
         throw new ApiError(500, 'Failed to toggle publish status')
     }
 

@@ -194,14 +194,14 @@ const getUser = asyncHandler(async (req, res) => {
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
     const { fullname, email } = req.body
-
+    console.log(req.body);
     if (!fullname && !email) {
         throw new ApiError(400, "Fields required")
     }
 
     const user = await User.findByIdAndUpdate(req.user?._id, {
         $set: {
-            fullName: fullname,
+            fullname: fullname,
             email: email
         }
     }, { new: true }).select("-password")
@@ -223,7 +223,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Error while uploading")
     }
 
-    const user = await User.findById(req.user._id)
+    let user = await User.findById(req.user._id)
 
     const response = await deleteFromCloudinary(user.avatar)
     if (!response.success) {
@@ -231,7 +231,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
     }
 
     user.avatar = avatar.url;
-    user = await user.save({ validateBeforeSave: false })
+    user = await user.save({ validateBeforeSave: false })   
 
     return res.status(200).json(new ApiResponse(200, user, "Avatar Updated Succesfully"))
 
@@ -319,9 +319,9 @@ const getUserChannel = asyncHandler(async (req, res) => {
         },
         {
             $project: {
-                fullName: 1,
+                fullname: 1,
                 username: 1,
-                subscribersCount: 1,
+                subscriberCount: 1,
                 subscribedToCount: 1,
                 isSubscribed: 1,
                 avatar: 1,
